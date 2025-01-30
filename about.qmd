@@ -1,0 +1,22 @@
+---
+title: "Andro Asatashvili"
+image: "aboutpic.jpg"
+about:
+  template: trestles
+  links:
+    - icon: envelope
+      text: Email
+      href: mailto:andasaant@gmail.com
+    - icon: twitter
+      text: Twitter
+      href: https://x.com/AndroAsatashvi1
+    - icon: linkedin
+      text: LinkedIn
+      href: https://www.linkedin.com/in/andro-asatashvili/
+---
+
+Welcome to my personal website! 
+
+I have a BSc. in Economics from Mexico's Centre of Research and Teaching in Economics [CIDE](https://www.cide.edu/). I currently work as an Economic Researcher at [Profuturo](https://www.profuturo.mx/), Mexico's leading pension fund, specializing in global affairs. My primary role involves supporting the Fixed Income, Asset Allocation and Risk teams by providing economic intelligence related to the fund's portfolio. My key areas of interest include Macroeconomics, Monetary Policy, Time Series Econometrics, and R programming.
+
+You can view Profuturo's monthly Economic Perspective document [here](https://www.profuturo.mx/perspectiva-economica). Spanish only.

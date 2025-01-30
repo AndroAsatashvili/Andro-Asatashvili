@@ -1,0 +1,15 @@
+---
+title: "Publications"
+---
+
+## Crimen y Educación en México (2024)
+
+Co-authored a book chapter with Ericka Rascón,PhD and Raúl Cepeda, BSc in CIDE´s book *La Economía Mexicana: un balance desde la academia (2024)*. We explore the relationship of diverse crimes with different educational variables in Mexico, across the 2469 *municipios* of the country. You can check it [here](https://repositorio-digital.cide.edu/handle/11651/5906).
+
+-   Centro de Investigación y Docencia Económicas (México). División de Economía (2024). *La economía mexicana: un balance desde la academia.*
+
+## Inflation dynamics with Non Linear Local Projections: Global Supply Chains and Consumer Debt in the US (2024)
+
+This dissertation researches the dynamics of US inflation using a novel nonlinear local projections framework. We highlight the roles of the global supply chain and consumer debt levels in monetary policy efficacy. In order to do this, we establish four regimes, constructed on transition probabilities based on the interaction of the aforementioned variables, which are known as trigger variables. This means that we asses monetary policy effectiveness on whether there's stress in the global supply chain and simultaneously, high consumer debt levels. You can read my dissertation [here](https://repositorio-digital.cide.edu/handle/11651/6075).
+
+-   Asatashvili, A. (2024). *Inflation dynamics with non linear local projections: global supply chains and consumer debt in the US*.

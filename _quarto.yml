@@ -1,0 +1,29 @@
+project:
+  type: website
+  output-dir: docs/
+
+website:
+  page-footer: 
+    right: |
+      This site was built with <a href="https://quarto.org/">Quarto</a>.
+  favicon: "-favicon-color.png"
+  title: "Andro Asatashvili"
+  image: "logo.png"
+  navbar:
+    logo: "logo.png"
+    right:
+      - text: "Code"
+        href: Code.qmd
+      - text: "Publications"
+        href: Publications.qmd
+      - CV.qmd
+      
+format:
+  html:
+    linkcolor: darkgreen
+    theme:
+      light: flatly
+    css: styles.css
+
+editor: visual
+

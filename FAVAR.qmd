@@ -1,0 +1,1465 @@
+---
+title: "FAVAR"
+description: "Factor Augmented VAR for Inflation Forecasting in Python"
+toc: true
+code-annotations: hover
+toc-location: left
+toc-depth: 1
+toc-title: "Contents"
+page-layout: full
+---
+
+Model, variable choice and variable transformation based on Bernanke (2005)
+
+```{r, warning=FALSE, include=FALSE}
+rm(list = ls())
+
+library(tidyverse)
+library(fredr)
+library(readxl)
+
+key <- "c27bf13d09598a184acdcb2ba94aa28f"
+fredr_set_key(key)
+fredr_has_key()
+
+today <- Sys.Date()
+
+
+################################################################################
+################################################################################
+#                          Real Output and Income
+################################################################################
+################################################################################
+
+INDPROD <-fredr_series_observations(series_id = "INDPRO",
+                                    observation_start = as.Date("1993-03-01"),
+                                    observation_end = today,
+                                    frequency = "m",
+                                    aggregation_method = "avg",
+                                    units = "lin") %>%
+  mutate(IP = log(value) - lag(log(value))) %>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+IPFINAL <-fredr_series_observations(series_id = "IPFINAL",
+                                    observation_start = as.Date("1993-03-01"),
+                                    observation_end = today,
+                                    frequency = "m",
+                                    aggregation_method = "avg",
+                                    units = "lin") %>%
+  mutate(IPF = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+IPCONGD <-fredr_series_observations(series_id = "IPCONGD",
+                                    observation_start = as.Date("1993-03-01"),
+                                    observation_end = today,
+                                    frequency = "m",
+                                    aggregation_method = "avg",
+                                    units = "lin") %>%
+  mutate(IPC = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+IPDCONGD <-fredr_series_observations(series_id = "IPDCONGD",
+                                     observation_start = as.Date("1993-03-01"),
+                                     observation_end = today,
+                                     frequency = "m",
+                                     aggregation_method = "avg",
+                                     units = "lin") %>%
+  mutate(IPCD = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+IPNCONGD <-fredr_series_observations(series_id = "IPNCONGD",
+                                     observation_start = as.Date("1993-03-01"),
+                                     observation_end = today,
+                                     frequency = "m",
+                                     aggregation_method = "avg",
+                                     units = "lin") %>%
+  mutate(IPCN = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+IPBUSEQ <-fredr_series_observations(series_id = "IPBUSEQ",
+                                    observation_start = as.Date("1993-03-01"),
+                                    observation_end = today,
+                                    frequency = "m",
+                                    aggregation_method = "avg",
+                                    units = "lin") %>%
+  mutate(IPE = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+IPMAN <-fredr_series_observations(series_id = "IPMAN",
+                                  observation_start = as.Date("1993-03-01"),
+                                  observation_end = today,
+                                  frequency = "m",
+                                  aggregation_method = "avg",
+                                  units = "lin") %>%
+  mutate(IPMFG = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+IPMAT <-fredr_series_observations(series_id = "IPMAT",
+                                  observation_start = as.Date("1993-03-01"),
+                                  observation_end = today,
+                                  frequency = "m",
+                                  aggregation_method = "avg",
+                                  units = "lin") %>%
+  mutate(IPM = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+IPDMAT <-fredr_series_observations(series_id = "IPDMAT",
+                                   observation_start = as.Date("1993-03-01"),
+                                   observation_end = today,
+                                   frequency = "m",
+                                   aggregation_method = "avg",
+                                   units = "lin") %>%
+  mutate(IPMD = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+IPNMAT <-fredr_series_observations(series_id = "IPNMAT",
+                                   observation_start = as.Date("1993-03-01"),
+                                   observation_end = today,
+                                   frequency = "m",
+                                   aggregation_method = "avg",
+                                   units = "lin") %>%
+  mutate(IPMND = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+IPDMAN <-fredr_series_observations(series_id = "IPDMAN",
+                                   observation_start = as.Date("1993-03-01"),
+                                   observation_end = today,
+                                   frequency = "m",
+                                   aggregation_method = "avg",
+                                   units = "lin") %>%
+  mutate(IPD = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+IPNMAN <-fredr_series_observations(series_id = "IPNMAN",
+                                   observation_start = as.Date("1993-03-01"),
+                                   observation_end = today,
+                                   frequency = "m",
+                                   aggregation_method = "avg",
+                                   units = "lin") %>%
+  mutate(IPN = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+IPMINE <-fredr_series_observations(series_id = "IPMINE",
+                                   observation_start = as.Date("1993-03-01"),
+                                   observation_end = today,
+                                   frequency = "m",
+                                   aggregation_method = "avg",
+                                   units = "lin") %>%
+  mutate(IPMIN = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+
+
+PI <-fredr_series_observations(series_id = "PI",
+                               observation_start = as.Date("1993-03-01"),
+                               observation_end = today,
+                               frequency = "m",
+                               aggregation_method = "avg",
+                               units = "lin") %>%
+  mutate(GMPYQ = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+
+################################################################################
+################################################################################
+#                         Price Indexes
+################################################################################
+################################################################################
+
+CPIAUCSL <-fredr_series_observations(series_id = "CPIAUCSL",
+                                     observation_start = as.Date("1993-03-01"),
+                                     observation_end = today,
+                                     frequency = "m",
+                                     aggregation_method = "avg",
+                                     units = "pc1") %>%
+  mutate(PUNEW = value)%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+CPIAPPSL <-fredr_series_observations(series_id = "CPIAPPSL",
+                                     observation_start = as.Date("1993-03-01"),
+                                     observation_end = today,
+                                     frequency = "m",
+                                     aggregation_method = "avg",
+                                     units = "lin") %>%
+  mutate(PU83 = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+CPITRNSL <-fredr_series_observations(series_id = "CPITRNSL",
+                                     observation_start = as.Date("1993-03-01"),
+                                     observation_end = today,
+                                     frequency = "m",
+                                     aggregation_method = "avg",
+                                     units = "lin") %>%
+  mutate(PU84 = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+CPIMEDSL <-fredr_series_observations(series_id = "CPIMEDSL",
+                                     observation_start = as.Date("1993-03-01"),
+                                     observation_end = today,
+                                     frequency = "m",
+                                     aggregation_method = "avg",
+                                     units = "lin") %>%
+  mutate(PU85 = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+CUUR0000SAC <-fredr_series_observations(series_id = "CUUR0000SAC",
+                                        observation_start = as.Date("1993-03-01"),
+                                        observation_end = today,
+                                        frequency = "m",
+                                        aggregation_method = "avg",
+                                        units = "lin") %>%
+  mutate(PUC = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+CUSR0000SAD <-fredr_series_observations(series_id = "CUSR0000SAD",
+                                        observation_start = as.Date("1993-03-01"),
+                                        observation_end = today,
+                                        frequency = "m",
+                                        aggregation_method = "avg",
+                                        units = "lin") %>%
+  mutate(PUCD = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+CUSR0000SAS <-fredr_series_observations(series_id = "CUSR0000SAS",
+                                        observation_start = as.Date("1993-03-01"),
+                                        observation_end = today,
+                                        frequency = "m",
+                                        aggregation_method = "avg",
+                                        units = "lin") %>%
+  mutate(PUS = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+CPIULFNS <-fredr_series_observations(series_id = "CPIULFNS",
+                                     observation_start = as.Date("1993-03-01"),
+                                     observation_end = today,
+                                     frequency = "m",
+                                     aggregation_method = "avg",
+                                     units = "lin") %>%
+  mutate(PUXF = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+CUUR0000SA0L2 <-fredr_series_observations(series_id = "CUUR0000SA0L2",
+                                          observation_start = as.Date("1993-03-01"),
+                                          observation_end = today,
+                                          frequency = "m",
+                                          aggregation_method = "avg",
+                                          units = "lin") %>%
+  mutate(PUXHS = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+CUSR0000SA0L5 <-fredr_series_observations(series_id = "CUSR0000SA0L5",
+                                          observation_start = as.Date("1993-03-01"),
+                                          observation_end = today,
+                                          frequency = "m",
+                                          aggregation_method = "avg",
+                                          units = "lin") %>%
+  mutate(PUXM = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+
+WPSFD49207 <-fredr_series_observations(series_id = "WPSFD49207",
+                                       observation_start = as.Date("1993-03-01"),
+                                       observation_end = today,
+                                       frequency = "m",
+                                       aggregation_method = "avg",
+                                       units = "lin") %>%
+  mutate(PWFSA = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+WPSFD49502 <-fredr_series_observations(series_id = "WPSFD49502",
+                                       observation_start = as.Date("1993-03-01"),
+                                       observation_end = today,
+                                       frequency = "m",
+                                       aggregation_method = "avg",
+                                       units = "lin") %>%
+  mutate(PWFCSA = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+
+
+
+################################################################################
+################################################################################
+#                         Average Hourly Earnings
+################################################################################
+################################################################################
+
+
+AHECONS <-fredr_series_observations(series_id = "AHECONS",
+                                    observation_start = as.Date("1993-03-01"),
+                                    observation_end = today,
+                                    frequency = "m",
+                                    aggregation_method = "avg",
+                                    units = "lin") %>%
+  mutate(LEHCC = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+CES3000000008 <-fredr_series_observations(series_id = "CES3000000008",
+                                          observation_start = as.Date("1993-03-01"),
+                                          observation_end = today,
+                                          frequency = "m",
+                                          aggregation_method = "avg",
+                                          units = "lin") %>%
+  mutate(LEHM = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+
+################################################################################
+################################################################################
+#                         Miscellaneous
+################################################################################
+################################################################################
+
+
+UMCSENT <-fredr_series_observations(series_id = "UMCSENT",
+                                    observation_start = as.Date("1993-03-01"),
+                                    observation_end = today,
+                                    frequency = "m",
+                                    aggregation_method = "avg",
+                                    units = "lin") %>%
+  mutate(HHSNTN = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+
+
+
+
+################################################################################
+################################################################################
+#                         Employment and hours
+################################################################################
+################################################################################
+
+
+CE16OV <-fredr_series_observations(series_id = "CE16OV",
+                                   observation_start = as.Date("1993-03-01"),
+                                   observation_end = today,
+                                   frequency = "m",
+                                   aggregation_method = "avg",
+                                   units = "lin") %>%
+  mutate(LHEM = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+
+PAYEMS <-fredr_series_observations(series_id = "PAYEMS",     
+                                   observation_start = as.Date("1993-03-01"),
+                                   observation_end = today,
+                                   frequency = "m",
+                                   aggregation_method = "avg",
+                                   units = "lin") %>%
+  mutate(LHNAG = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+UNRATE <-fredr_series_observations(series_id = "UNRATE",     
+                                   observation_start = as.Date("1993-03-01"),
+                                   observation_end = today,
+                                   frequency = "m",
+                                   aggregation_method = "avg",
+                                   units = "lin") %>%
+  mutate(LHUR = value)%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+
+UEMPMEAN <-fredr_series_observations(series_id = "UEMPMEAN",     
+                                     observation_start = as.Date("1993-03-01"),
+                                     observation_end = today,
+                                     frequency = "m",
+                                     aggregation_method = "avg",
+                                     units = "lin") %>%
+  mutate(LHU680 = value)%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+
+UEMPLT5 <-fredr_series_observations(series_id = "UEMPLT5",     
+                                    observation_start = as.Date("1993-03-01"),
+                                    observation_end = today,
+                                    frequency = "m",
+                                    aggregation_method = "avg",
+                                    units = "lin") %>%
+  mutate(LHU5 = value)%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+UEMP5TO14 <-fredr_series_observations(series_id = "UEMP5TO14",     
+                                      observation_start = as.Date("1993-03-01"),
+                                      observation_end = today,
+                                      frequency = "m",
+                                      aggregation_method = "avg",
+                                      units = "lin") %>%
+  mutate(LHU14 = value)%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+
+UEMP15OV <-fredr_series_observations(series_id = "UEMP15OV",     
+                                     observation_start = as.Date("1993-03-01"),
+                                     observation_end = today,
+                                     frequency = "m",
+                                     aggregation_method = "avg",
+                                     units = "lin") %>%
+  mutate(LHU1 = value)%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+
+
+UEMP15T26 <-fredr_series_observations(series_id = "UEMP15T26",     
+                                      observation_start = as.Date("1993-03-01"),
+                                      observation_end = today,
+                                      frequency = "m",
+                                      aggregation_method = "avg",
+                                      units = "lin") %>%
+  mutate(LHU26 = value)%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+
+USPRIV  <- fredr_series_observations(series_id = "USPRIV",     
+                                     observation_start = as.Date("1993-03-01"),
+                                     observation_end = today,
+                                     frequency = "m",
+                                     aggregation_method = "avg",
+                                     units = "lin") %>%
+  mutate(LP = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+USGOOD  <- fredr_series_observations(series_id = "USGOOD",     
+                                     observation_start = as.Date("1993-03-01"),
+                                     observation_end = today,
+                                     frequency = "m",
+                                     aggregation_method = "avg",
+                                     units = "lin") %>%
+  mutate(LPGD = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+USMINE  <- fredr_series_observations(series_id = "USMINE",     
+                                     observation_start = as.Date("1993-03-01"),
+                                     observation_end = today,
+                                     frequency = "m",
+                                     aggregation_method = "avg",
+                                     units = "lin") %>%
+  mutate(LPMI = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+USCONS  <- fredr_series_observations(series_id = "USCONS",     
+                                     observation_start = as.Date("1993-03-01"),
+                                     observation_end = today,
+                                     frequency = "m",
+                                     aggregation_method = "avg",
+                                     units = "lin") %>%
+  mutate(LPCC = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+MANEMP  <- fredr_series_observations(series_id = "MANEMP",     
+                                     observation_start = as.Date("1993-03-01"),
+                                     observation_end = today,
+                                     frequency = "m",
+                                     aggregation_method = "avg",
+                                     units = "lin") %>%
+  mutate(LPEM = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+DMANEMP  <- fredr_series_observations(series_id = "DMANEMP",     
+                                      observation_start = as.Date("1993-03-01"),
+                                      observation_end = today,
+                                      frequency = "m",
+                                      aggregation_method = "avg",
+                                      units = "lin") %>%
+  mutate(LPED = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+DMANEMP  <- fredr_series_observations(series_id = "NDMANEMP",     
+                                      observation_start = as.Date("1993-03-01"),
+                                      observation_end = today,
+                                      frequency = "m",
+                                      aggregation_method = "avg",
+                                      units = "lin") %>%
+  mutate(LPED = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+CES0800000001  <- fredr_series_observations(series_id = "CES0800000001",     
+                                            observation_start = as.Date("1993-03-01"),
+                                            observation_end = today,
+                                            frequency = "m",
+                                            aggregation_method = "avg",
+                                            units = "lin") %>%
+  mutate(LPSP = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+USTPU  <- fredr_series_observations(series_id = "USTPU",     
+                                    observation_start = as.Date("1993-03-01"),
+                                    observation_end = today,
+                                    frequency = "m",
+                                    aggregation_method = "avg",
+                                    units = "lin") %>%
+  mutate(LPTU = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+USTRADE  <- fredr_series_observations(series_id = "USTRADE",     
+                                      observation_start = as.Date("1993-03-01"),
+                                      observation_end = today,
+                                      frequency = "m",
+                                      aggregation_method = "avg",
+                                      units = "lin") %>%
+  mutate(LPT = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+CES5552000001  <- fredr_series_observations(series_id = "CES5552000001",     
+                                            observation_start = as.Date("1993-03-01"),
+                                            observation_end = today,
+                                            frequency = "m",
+                                            aggregation_method = "avg",
+                                            units = "lin") %>%
+  mutate(LPFR = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+CES5552000001  <- fredr_series_observations(series_id = "SRVPRD",     
+                                            observation_start = as.Date("1993-03-01"),
+                                            observation_end = today,
+                                            frequency = "m",
+                                            aggregation_method = "avg",
+                                            units = "lin") %>%
+  mutate(LPFR = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+USGOVT  <- fredr_series_observations(series_id = "USGOVT",     
+                                     observation_start = as.Date("1993-03-01"),
+                                     observation_end = today,
+                                     frequency = "m",
+                                     aggregation_method = "avg",
+                                     units = "lin") %>%
+  mutate(LPGOV = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+
+AWHMAN  <- fredr_series_observations(series_id = "AWHMAN",     
+                                     observation_start = as.Date("1993-03-01"),
+                                     observation_end = today,
+                                     frequency = "m",
+                                     aggregation_method = "avg",
+                                     units = "lin") %>%
+  mutate(LPHRM = value)%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+AWOTMAN  <- fredr_series_observations(series_id = "AWOTMAN",     
+                                      observation_start = as.Date("1993-03-01"),
+                                      observation_end = today,
+                                      frequency = "m",
+                                      aggregation_method = "avg",
+                                      units = "lin") %>%
+  mutate(LPMOSA = value)%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+
+
+
+################################################################################
+################################################################################
+#                         Consumption
+################################################################################
+################################################################################
+
+
+PCEPI  <- fredr_series_observations(series_id = "PCEPI",     
+                                    observation_start = as.Date("1993-03-01"),
+                                    observation_end = today,
+                                    frequency = "m",
+                                    aggregation_method = "avg",
+                                    units = "lin") %>%
+  mutate(GMCQ = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+
+DDURRG3M086SBEA  <- fredr_series_observations(series_id = "DDURRG3M086SBEA",     
+                                              observation_start = as.Date("1993-03-01"),
+                                              observation_end = today,
+                                              frequency = "m",
+                                              aggregation_method = "avg",
+                                              units = "lin") %>%
+  mutate(GMCDQ = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+
+DNDGRG3M086SBEA  <- fredr_series_observations(series_id = "DNDGRG3M086SBEA",     
+                                              observation_start = as.Date("1993-03-01"),
+                                              observation_end = today,
+                                              frequency = "m",
+                                              aggregation_method = "avg",
+                                              units = "lin") %>%
+  mutate(GMCNQ = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+
+DSERRG3M086SBEA  <- fredr_series_observations(series_id = "DSERRG3M086SBEA",     
+                                              observation_start = as.Date("1993-03-01"),
+                                              observation_end = today,
+                                              frequency = "m",
+                                              aggregation_method = "avg",
+                                              units = "lin") %>%
+  mutate(GMCSQ = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+
+
+
+#################################################################################
+
+dataframes_list <- list(
+  CPIAUCSL, IPFINAL, IPCONGD, IPDCONGD, IPNCONGD, IPBUSEQ, 
+  IPMAN, IPMAT, IPDMAT, IPNMAT, IPDMAN, IPNMAN, IPMINE, 
+  INDPROD, CPIAPPSL, CPITRNSL, CPIMEDSL, CUUR0000SAC, 
+  CUSR0000SAD, CUSR0000SAS, CPIULFNS, CUUR0000SA0L2, 
+  CUSR0000SA0L5, WPSFD49207, WPSFD49502, AHECONS, 
+  CES3000000008, UMCSENT, CE16OV, PAYEMS, UNRATE, 
+  UEMPMEAN, UEMPLT5, UEMP5TO14, UEMP15OV, UEMP15T26, 
+  USPRIV, USGOOD, USMINE, USCONS, MANEMP, DMANEMP, 
+  CES0800000001, USTPU, USTRADE, CES5552000001, USGOVT, 
+  AWHMAN, AWOTMAN, PCEPI, DDURRG3M086SBEA, DNDGRG3M086SBEA, 
+  DSERRG3M086SBEA, PI
+)
+
+slowvars <- reduce(dataframes_list, full_join, by = "date")
+
+# View the merged dataframe
+print(slowvars)
+
+
+
+library(tidyverse)
+library(fredr)
+library(readxl)
+library(yahoofinancer)
+library(forecast)
+
+key <- "c27bf13d09598a184acdcb2ba94aa28f"
+fredr_set_key(key)
+fredr_has_key()
+
+today <- Sys.Date()
+
+################################################################################
+################################################################################
+#                         Interest Rates
+################################################################################
+################################################################################
+
+
+DFF <-fredr_series_observations(series_id = "FEDFUNDS",
+                                observation_start = as.Date("1993-03-01"),
+                                observation_end = today,
+                                frequency = "m",
+                                aggregation_method = "avg",
+                                units = "lin") %>%
+  mutate(FYFF = value)%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+
+TB3MS <-fredr_series_observations(series_id = "TB3MS",
+                                  observation_start = as.Date("1993-03-01"),
+                                  observation_end = today,
+                                  frequency = "m",
+                                  aggregation_method = "avg",
+                                  units = "lin") %>%
+  mutate(FYGM3 = value)%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+DTB6 <-fredr_series_observations(series_id = "DTB6",
+                                 observation_start = as.Date("1993-03-01"),
+                                 observation_end = today,
+                                 frequency = "m",
+                                 aggregation_method = "avg",
+                                 units = "lin") %>%
+  mutate(FYGM6 = value)%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+DGS1 <-fredr_series_observations(series_id = "DGS1",
+                                 observation_start = as.Date("1993-03-01"),
+                                 observation_end = today,
+                                 frequency = "m",
+                                 aggregation_method = "avg",
+                                 units = "lin") %>%
+  mutate(FYGT1 = value)%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+DGS5 <-fredr_series_observations(series_id = "DGS5",
+                                 observation_start = as.Date("1993-03-01"),
+                                 observation_end = today,
+                                 frequency = "m",
+                                 aggregation_method = "avg",
+                                 units = "lin") %>%
+  mutate(FYGT5 = value)%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+DGS10 <-fredr_series_observations(series_id = "DGS10",
+                                  observation_start = as.Date("1993-03-01"),
+                                  observation_end = today,
+                                  frequency = "m",
+                                  aggregation_method = "avg",
+                                  units = "lin") %>%
+  mutate(FYGT10 = value)%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+AAA <-fredr_series_observations(series_id = "AAA",
+                                observation_start = as.Date("1993-03-01"),
+                                observation_end = today,
+                                frequency = "m",
+                                aggregation_method = "avg",
+                                units = "lin") %>%
+  mutate(FYAAAC = value)%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+DBAA <-fredr_series_observations(series_id = "DBAA",
+                                 observation_start = as.Date("1993-03-01"),
+                                 observation_end = today,
+                                 frequency = "m",
+                                 aggregation_method = "avg",
+                                 units = "lin") %>%
+  mutate(FYBAAC= value)%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+T3MFF <-fredr_series_observations(series_id = "T3MFF",
+                                  observation_start = as.Date("1993-03-01"),
+                                  observation_end = today,
+                                  frequency = "m",
+                                  aggregation_method = "avg",
+                                  units = "lin") %>%
+  mutate(SFYGM3= value)%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+T6MFF <-fredr_series_observations(series_id = "T6MFF",
+                                  observation_start = as.Date("1993-03-01"),
+                                  observation_end = today,
+                                  frequency = "m",
+                                  aggregation_method = "avg",
+                                  units = "lin") %>%
+  mutate(SFYGM6= value)%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+
+T1YFF <-fredr_series_observations(series_id = "T1YFF",
+                                  observation_start = as.Date("1993-03-01"),
+                                  observation_end = today,
+                                  frequency = "m",
+                                  aggregation_method = "avg",
+                                  units = "lin") %>%
+  mutate(SFYGT1= value)%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+T5YFF <-fredr_series_observations(series_id = "T5YFF",
+                                  observation_start = as.Date("1993-03-01"),
+                                  observation_end = today,
+                                  frequency = "m",
+                                  aggregation_method = "avg",
+                                  units = "lin") %>%
+  mutate(SFYGT5= value)%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+T10YFF <-fredr_series_observations(series_id = "T10YFF",
+                                   observation_start = as.Date("1993-03-01"),
+                                   observation_end = today,
+                                   frequency = "m",
+                                   aggregation_method = "avg",
+                                   units = "lin") %>%
+  mutate(SFYGT10= value)%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+AAAFFM <-fredr_series_observations(series_id = "AAAFFM",
+                                   observation_start = as.Date("1993-03-01"),
+                                   observation_end = today,
+                                   frequency = "m",
+                                   aggregation_method = "avg",
+                                   units = "lin") %>%
+  mutate(SFYAAAC= value)%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+BAAFFM <-fredr_series_observations(series_id = "BAAFFM",
+                                   observation_start = as.Date("1993-03-01"),
+                                   observation_end = today,
+                                   frequency = "m",
+                                   aggregation_method = "avg",
+                                   units = "lin") %>%
+  mutate(SFYBAAC= value)%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+
+################################################################################
+################################################################################
+#                         Money and credit quantity aggregates
+################################################################################
+################################################################################
+
+M1SL <-fredr_series_observations(series_id = "M1SL",
+                                 observation_start = as.Date("1993-03-01"),
+                                 observation_end = today,
+                                 frequency = "m",
+                                 aggregation_method = "avg",
+                                 units = "lin") %>%
+  mutate(FM1 = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+WM2NS <-fredr_series_observations(series_id = "WM2NS",
+                                  observation_start = as.Date("1993-03-01"),
+                                  observation_end = today,
+                                  frequency = "m",
+                                  aggregation_method = "avg",
+                                  units = "lin") %>%
+  mutate(FM2 = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+M2REAL <-fredr_series_observations(series_id = "M2REAL",     # Not sure if valid, given Bernanke (2005)
+                                   observation_start = as.Date("1993-03-01"),
+                                   observation_end = today,
+                                   frequency = "m",
+                                   aggregation_method = "avg",
+                                   units = "lin") %>%
+  mutate(FM2DQ = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+BUSLOANSNSA <-fredr_series_observations(series_id = "BUSLOANSNSA",     
+                                        observation_start = as.Date("1993-03-01"),
+                                        observation_end = today,
+                                        frequency = "m",
+                                        aggregation_method = "avg",
+                                        units = "lin") %>%
+  mutate(FCLNQ = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+
+
+NONREVNS <-fredr_series_observations(series_id = "NONREVNS",     
+                                     observation_start = as.Date("1993-03-01"),
+                                     observation_end = today,
+                                     frequency = "m",
+                                     aggregation_method = "avg",
+                                     units = "lin") %>%
+  mutate(CCINRV = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+
+
+
+################################################################################
+################################################################################
+#                         Exchange rates
+################################################################################
+################################################################################
+
+
+DEXSZUS <-fredr_series_observations(series_id = "DEXSZUS",     
+                                    observation_start = as.Date("1993-03-01"),
+                                    observation_end = today,
+                                    frequency = "m",
+                                    aggregation_method = "avg",
+                                    units = "lin") %>%
+  mutate(EXRSW = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+DEXJPUS <-fredr_series_observations(series_id = "DEXJPUS",     
+                                    observation_start = as.Date("1993-03-01"),
+                                    observation_end = today,
+                                    frequency = "m",
+                                    aggregation_method = "avg",
+                                    units = "lin") %>%
+  mutate(EXRJAN = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+
+DEXUSUK <-fredr_series_observations(series_id = "DEXUSUK",     
+                                    observation_start = as.Date("1993-03-01"),
+                                    observation_end = today,
+                                    frequency = "m",
+                                    aggregation_method = "avg",
+                                    units = "lin") %>%
+  mutate(EXRUK = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+
+DEXCAUS <-fredr_series_observations(series_id = "DEXCAUS",     
+                                    observation_start = as.Date("1993-03-01"),
+                                    observation_end = today,
+                                    frequency = "m",
+                                    aggregation_method = "avg",
+                                    units = "lin") %>%
+  mutate(EXRCAN = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+
+
+
+################################################################################
+################################################################################
+#                         Housing starts and sales
+################################################################################
+################################################################################
+
+
+HOUST <-fredr_series_observations(series_id = "HOUST",        #LAS CASAS POR REGION VIENEN EN SAAR EN FRED -> Checar 
+                                  observation_start = as.Date("1993-03-01"),
+                                  observation_end = today,
+                                  frequency = "m",
+                                  aggregation_method = "avg",
+                                  units = "log") %>%
+  mutate(HSFR = value)%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+
+HOUSTNE <-fredr_series_observations(series_id = "HOUSTNE",     
+                                    observation_start = as.Date("1993-03-01"),
+                                    observation_end = today,
+                                    frequency = "m",
+                                    aggregation_method = "avg",
+                                    units = "log") %>%
+  mutate(HSNE = value)%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+
+HOUSTMW <-fredr_series_observations(series_id = "HOUSTMW",     
+                                    observation_start = as.Date("1993-03-01"),
+                                    observation_end = today,
+                                    frequency = "m",
+                                    aggregation_method = "avg",
+                                    units = "log") %>%
+  mutate(HSMW = value)%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+
+HOUSTS <-fredr_series_observations(series_id = "HOUSTS",     
+                                   observation_start = as.Date("1993-03-01"),
+                                   observation_end = today,
+                                   frequency = "m",
+                                   aggregation_method = "avg",
+                                   units = "log") %>%
+  mutate(HSSOU = value)%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+
+HOUSTW <-fredr_series_observations(series_id = "HOUSTW",     
+                                   observation_start = as.Date("1993-03-01"),
+                                   observation_end = today,
+                                   frequency = "m",
+                                   aggregation_method = "avg",
+                                   units = "log") %>%
+  mutate(HSWST = value)%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+PERMIT <-fredr_series_observations(series_id = "PERMIT",     
+                                   observation_start = as.Date("1993-03-01"),
+                                   observation_end = today,
+                                   frequency = "m",
+                                   aggregation_method = "avg",
+                                   units = "log") %>%
+  mutate(HSBR = value)%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+SHTSAUS <-fredr_series_observations(series_id = "SHTSAUS",     
+                                    observation_start = as.Date("1993-03-01"),
+                                    observation_end = today,
+                                    frequency = "m",
+                                    aggregation_method = "avg",
+                                    units = "log") %>%
+  mutate(HMOB = value)%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+
+################################################################################
+################################################################################
+#                         Real inventories, orders and unfilled orders
+################################################################################
+################################################################################
+
+ACOGNO <-fredr_series_observations(series_id = "ACOGNO",     
+                                   observation_start = as.Date("1993-03-01"),
+                                   observation_end = today,
+                                   frequency = "m",
+                                   aggregation_method = "avg",
+                                   units = "lin") %>%
+  mutate(MOCMQ = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+
+ANDENO <-fredr_series_observations(series_id = "ANDENO",     
+                                   observation_start = as.Date("1993-03-01"),
+                                   observation_end = today,
+                                   frequency = "m",
+                                   aggregation_method = "avg",
+                                   units = "lin") %>%
+  mutate(MSONDQ = log(value) - lag(log(value)))%>%
+  dplyr::select(-value, -realtime_start, -realtime_end, -series_id)
+
+
+
+################################################################################
+################################################################################
+#                         Stock Prices
+################################################################################
+################################################################################
+
+NYSE <- Index$new('^NYA')
+NYSE <- NYSE$get_history(start = '1993-03-01', interval = '1mo')
+NYSE <- NYSE %>%
+  mutate(date = as.Date(date)) %>%
+  mutate(FSNCOM = log(close) - lag(log(close))) %>%
+  dplyr::select(date, FSNCOM)
+NYSE <- NYSE[-nrow(NYSE), ] 
+NYSE <- as_tibble(NYSE)
+
+
+SP <- Index$new('^SPX')
+SP <- SP$get_history(start = '1993-03-01', interval = '1mo')
+SP <- SP %>%
+  mutate(date = as.Date(date)) %>%
+  mutate(FSPCOM = log(close) - lag(log(close))) %>%
+  dplyr::select(date, FSPCOM)
+SP <- SP[-nrow(SP), ] 
+SP <- as_tibble(SP)
+
+
+SP_IND <- Index$new('^SP500-20')
+SP_IND <- SP_IND$get_history(start = '1993-03-01', interval = '1mo')
+SP_IND <- SP_IND %>%
+  mutate(date = as.Date(date)) %>%
+  mutate(FSPIN = log(close) - lag(log(close))) %>%
+  dplyr::select(date, FSPIN)
+SP_IND <- SP_IND[-nrow(SP_IND), ] 
+SP_IND <- as_tibble(SP_IND)
+
+
+SP_U <- Index$new('^SP500-55')
+SP_U <- SP_U$get_history(start = '1993-03-01', interval = '1mo')
+SP_U <- SP_U %>%
+  mutate(date = as.Date(date)) %>%
+  mutate(FSPCAP = log(close) - lag(log(close))) %>%
+  dplyr::select(date, FSPCAP)
+SP_U <- SP_U[-nrow(SP_U), ] 
+SP_U <- as_tibble(SP_U)
+
+
+
+
+
+
+
+
+
+
+################################################################################
+
+# List all dataframes to be merged
+dataframes_list_interest_money_exchange <- list(
+  DFF, TB3MS, DTB6, DGS1, DGS5, DGS10, AAA, DBAA, T3MFF, 
+  T6MFF, T1YFF, T5YFF, T10YFF, AAAFFM, BAAFFM, M1SL, WM2NS, 
+  M2REAL, BUSLOANSNSA, NONREVNS, DEXSZUS, DEXJPUS, DEXUSUK, 
+  DEXCAUS, HOUST, HOUSTNE, HOUSTMW, HOUSTS, HOUSTW, PERMIT, 
+  SHTSAUS, ACOGNO, ANDENO
+)
+
+# Use reduce to join all dataframes by the "date" column
+vars <- reduce(dataframes_list_interest_money_exchange, full_join, by = "date")
+
+# View the merged dataframe
+print(vars)
+
+
+
+# Join both merged datasets by the 'date' column
+df <- full_join(slowvars, vars, by = "date")
+
+
+
+#####################################################################
+# Rellenar con autoarima datos faltantes
+#####################################################################
+#####################################################################
+#####################################################################
+#for (col_name in names(df)[-c(1, 2)]) {
+  # Select the column and remove the last two rows (NA values)
+ # data_for_arima <- df[[col_name]][!is.na(df[[col_name]])]
+  
+  # Fit the ARIMA model on the available data
+  #fit <- auto.arima(data_for_arima)
+  
+  # Forecast the next 2 values
+  #forecasted_values <- forecast(fit, h=2)$mean
+  
+  # Fill the last two NA values in the column with the forecasted values
+  #df[[col_name]][is.na(df[[col_name]])] <- forecasted_values
+#}
+#####################################################################
+#####################################################################
+#####################################################################
+
+writexl::write_xlsx(df, "favardata.xlsx")
+```
+
+
+
+```{python, include = FALSE}
+from scipy.interpolate import interp1d
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+import os
+from datetime import datetime
+import tkinter.filedialog
+from datetime import timedelta
+import math 
+import time
+import calendar
+from numba import jit
+from sklearn.metrics import mean_squared_error
+import scipy
+import statsmodels.tsa.stattools as ts
+import statsmodels.tsa as tsa
+import matplotlib.pyplot as plt
+import numpy as np
+import sklearn
+from sklearn.metrics import mean_squared_error, r2_score
+import statsmodels.api as sm
+from datetime import datetime,timedelta
+
+def import_data(file_name, sheet_name, start=0, interpolation=False, encoding='gb18030'):
+    Temp = pd.read_excel(file_name, sheet_name, encoding = encoding)
+    res = Temp.iloc[start:,1:]
+    res.index = Temp.iloc[start:,0]
+    if interpolation==True:
+        res = DataInterpolation(res, 0, len(res.index), 'cubic').dropna(axis=0,how='any')
+    return res
+
+def DataInterpolation(data, start, end, method):
+    # data must be a time series dataframe
+    n_row = len(data.index)
+    n_col = len(data.columns)
+    res = np.array(np.zeros(shape=(n_row,n_col)))
+    
+    for i in range(n_col):
+        res[:,i] = np.array(data.iloc[:,i]).T
+        y=data.iloc[start:end,i]
+        location = np.where(y.notnull())[0]
+        upper_bound=max(location)
+        lower_bound=min(location)
+        f2 = interp1d(location, y[y.notnull()], kind=method)
+        x = np.linspace(lower_bound, upper_bound, num=upper_bound-lower_bound, endpoint=False)
+        res[lower_bound:upper_bound,i]=np.array(f2(x)).T
+    
+    res = pd.DataFrame(res, index=data.index, columns=data.columns)
+    
+    return res
+
+def rand_Matrix(n_row, n_col):
+    randArr = np.random.randn(n_row, n_col)
+    randMat = np.mat(randArr)
+    return randMat
+
+
+def calculate_factor_loadings(observables, factors):
+    # Both dataframes should have the same time stamp
+    n_time = len(observables.index)
+    x = np.mat(observables-observables.mean())
+    F=np.mat(factors)
+    temp = F[0].T.dot(F[0])
+    for i in range(1,n_time):
+        temp = temp + F[i].T.dot(F[i])
+    
+    Lambda = x[0].T.dot(F[0]).dot(temp.I)
+    for i in range(1,n_time):
+        Lambda = Lambda + x[i].T.dot(F[i]).dot(temp.I)
+        
+    return Lambda
+
+def calculate_prediction_matrix(factors):
+    n_time = len(factors.index)
+    F=np.mat(factors)
+    
+    temp = F[0].T.dot(F[0])
+    for i in range(2,n_time):
+        temp = temp + F[i-1].T.dot(F[i-1])
+    
+    A = F[1].T.dot(F[0]).dot(temp.I)
+    for i in range(2,n_time):
+        A = A + F[i].T.dot(F[i-1]).dot(temp.I)
+    
+    return A
+
+def calculate_shock_matrix(factors, prediction_matrix, n_shocks):
+    n_time = len(factors.index)
+    F = np.mat(factors)
+    A = prediction_matrix
+    
+    temp = F[0].T.dot(F[0])
+    for i in range(2,n_time):
+        temp = temp + F[i-1].T.dot(F[i-1])
+    
+    term1 = F[1].T.dot(F[1])
+    for i in range(2,n_time):
+        term1 = term1 + F[i].T.dot(F[i])
+    term1 = term1/(n_time-1)
+    term2 = A.dot(temp/(n_time-1)).dot(A.T)
+    Sigma = term1 - term2
+    
+    eigenvalues, eigenvectors = np.linalg.eig(Sigma)
+    sorted_indices = np.argsort(eigenvalues)
+    evalues = eigenvalues[sorted_indices[:-n_shocks-1:-1]]
+    M = eigenvectors[:,sorted_indices[:-n_shocks-1:-1]]
+    B = M.dot(np.diag(pow(evalues,0.5)))
+    
+    return B, Sigma
+
+def calculate_pca(observables, n_factors):
+    # syntax: 
+    n_time = len(observables.index)
+    x = np.mat(observables-observables.mean())
+    z = np.mat((observables-observables.mean())/observables.std())
+    
+    S = z[0].T.dot(z[0])
+    for i in range(1,n_time):
+        S = S + z[i].T.dot(z[i])
+    
+    eigenvalues, eigenvectors = np.linalg.eig(S)
+    sorted_indices = np.argsort(eigenvalues)
+    evalues = eigenvalues[sorted_indices[:-n_factors-1:-1]]
+    V = np.mat(eigenvectors[:,sorted_indices[:-n_factors-1:-1]])
+    D = np.diag(evalues)
+    
+    return D, V, S
+    
+def calculate_covariance(factors):
+    n_time = len(factors.index)
+    F = np.mat(factors)
+    temp = [factors.iloc[:,i] for i in range(len(factors.columns))]
+    return np.cov(temp)
+
+def plot_double_axis(x1,x2, label1, label2, title=False, shift1=0,shift2=0, fig_size=[24,16], line_width=3.0,font_size='xx-large', legend_size=12, grid=False, legend_loc=(1,1)):
+    plt.rcParams['figure.figsize'] = (fig_size[0], fig_size[1])
+    plt.rcParams['lines.markersize'] = 6
+    plt.rcParams['legend.fontsize'] = legend_size
+    plt.rcParams['font.sans-serif']=['SimHei']
+    plt.rcParams['axes.unicode_minus'] = False
+
+    fig = plt.figure()
+    plt.grid(grid)
+    ax1 = fig.add_subplot(111)
+    Label1 = label1
+    if shift1 > 0:
+        Label1 = label1 + '-lag'+ str(shift1)
+    line1=ax1.plot(x1.index, x1.shift(shift1).values,color='k',label=Label1, linewidth=line_width,zorder=-1)
+    #ax1.legend(loc=2)
+    
+    ax2 = ax1.twinx()
+    Label2 = label2
+    if shift2 > 0:
+        Label2 = label2 + '-lag'+ str(shift2)
+    line2=ax2.plot(x2.index, x2.shift(shift2).values,color='r',label=Label2, linewidth=line_width,zorder=1)
+    #ax2.legend(loc=1)
+    #plt.legend(loc=1)
+    if title!=False:
+        plt.title(title, fontweight='bold', fontsize=font_size)
+    
+    #ax1.legend(loc=2)
+    fig.legend( bbox_to_anchor=legend_loc, bbox_transform=ax2.transAxes)
+    plt.show()
+    
+    return
+
+def data_transform(data, method):
+    # 0 - no transformation
+    # 1 - first difference
+    # 2 - 12th difference
+    # 3 - logarithm
+    # 4 - first difference of logarithm
+    if len(data.columns) != len(method):
+        return print('Does not match')
+    
+    data_transformed = pd.DataFrame(data=np.nan, index=data.index, columns=data.columns)
+    columns = data.columns.tolist()
+    
+    for i in range(len(data.columns)):
+        if method[i] == 0:
+            data_transformed.iloc[:,i] = data.iloc[:,i]
+        if method[i] == 1:
+            data_transformed.iloc[:,i] = data.iloc[:,i].diff(1)
+            columns[i] = columns[i] +'.D1'
+        if method[i] == 2:
+            data_transformed.iloc[:,i] = data.iloc[:,i].diff(12)
+            columns[i] = columns[i] +'.D12'
+        if method[i] == 3:
+            data_transformed.iloc[:,i] = np.log(data.iloc[:,i])
+            columns[i] = 'Log.' + columns[i]
+        if method[i] == 4:
+            data_transformed.iloc[:,i] = np.log(data.iloc[:,i]).diff(1)
+            columns[i] = 'Log.' + columns[i] + '.D1'
+    
+    data_transformed.columns = columns
+    
+    return data_transformed
+            
+            
+
+```
+
+```{python}
+#from Functions import *
+from scipy.interpolate import interp1d
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+import os
+from datetime import datetime
+import tkinter.filedialog
+from datetime import timedelta
+import math 
+import time
+import calendar
+from numba import jit
+from sklearn.metrics import mean_squared_error
+from statsmodels.tsa.api import VAR
+import scipy
+import statsmodels.tsa.stattools as ts
+import statsmodels.tsa as tsa
+import matplotlib.pyplot as plt
+import numpy as np
+import sklearn
+from sklearn.metrics import mean_squared_error, r2_score
+import statsmodels.api as sm
+from datetime import datetime,timedelta
+from statsmodels.tsa.stattools import adfuller
+from numpy.linalg import cholesky
+
+def Factor(Y, X_slow, n_factors, X_fast='None'):
+    #n_time = len(Y.index)
+    n_var = len(Y.columns)
+    if isinstance(X_fast,str)==True:
+        hist = Y.join(X_slow)
+    else:
+        hist = Y.join(X_slow).join(X_fast)
+    
+    hist=hist.dropna(axis=0,how='any')
+
+    "step 1 - PCA on all observable variables"
+    x = np.mat(hist - hist.mean())
+    z = np.mat((hist - hist.mean())/hist.std())
+    D, V, S = calculate_pca(hist, n_factors + n_var)
+    Psi = np.mat(np.diag(np.diag(S - V.dot(D).dot(V.T))))
+    factors = V.T.dot(z.T).T
+    C = pd.DataFrame(data=factors, index=hist.index, columns=['C' + str(i+1) for i in range(n_factors+n_var)])
+    Loadings_C = calculate_factor_loadings(hist, C)
+    
+    "step 2 - PCA on slow moving variables"
+    x = np.mat(X_slow-X_slow.mean())
+    z = np.mat((X_slow-X_slow.mean())/X_slow.std())
+    D, V, S = calculate_pca(X_slow, n_factors)
+    Psi = np.mat(np.diag(np.diag(S - V.dot(D).dot(V.T))))
+    factors = V.T.dot(z.T).T
+    F_minus = pd.DataFrame(data=factors, index=X_slow.index, columns=['F_minus' + str(i+1) for i in range(n_factors)])
+    Loadings_F_slow = calculate_factor_loadings(X_slow, F_minus)
+    
+    "step 3 - C_t = b1*Y_t + b2*F_t"
+    X = Y.join(F_minus)
+    B = calculate_factor_loadings(C, X)
+    Lambda_y, Lambda_f = B[:,0:n_var], B[:,n_var:]
+    # F_t= Lambda_f^-1*(C_t-Lambda_y*Y_t)
+    F = Lambda_f.I.dot((np.mat(C).T - Lambda_y.dot(Y.T))).T
+    F = pd.DataFrame(data=F, index=X_slow.index, columns=['F' + str(i+1) for i in range(n_factors)])
+
+    return FactorResultsWrapper(C=C, Lambda_c=Loadings_C, F_minus=F_minus, F=F)
+    
+class FactorResultsWrapper():
+    def __init__(self, C, Lambda_c, F_minus, F):
+        self.C = C
+        self.Lambda_c = Lambda_c
+        self.F_minus = F_minus
+        self.F = F
+
+def FAVAR(Factor, Y, lag):
+    hist = Y.join(Factor)
+    model=VAR(hist,missing='drop').fit(lag,trend='n')
+ 
+    return FAVARResultsWrapper(VAR=model)
+    
+class FAVARResultsWrapper():
+    def __init__(self, VAR):
+        self.VAR = VAR
+    
+    def summary(self):
+        print(self.VAR.summary())
+        return
+    
+    def predict(self, Factor, Y, step, freq='M', alpha=0.05):
+        hist = Y.join(Factor)
+        [forecast_mean,forecast_low,forecast_up] = self.VAR.forecast_interval(hist.values, step, alpha)
+        mean = np.concatenate((hist.values, forecast_mean), axis=0)
+        up = np.concatenate((hist.values, forecast_up), axis=0)
+        low = np.concatenate((hist.values, forecast_low), axis=0)
+        
+        
+        dates = pd.date_range(Y.index[0], periods=len(Y.index)+step,freq=freq)
+        
+        mean = pd.DataFrame(data=mean[:,0:len(Y.columns)], columns=Y.columns.tolist(), index=dates)
+        low = pd.DataFrame(data=low[:,0:len(Y.columns)], columns=Y.columns.tolist(), index=dates)
+        up = pd.DataFrame(data=up[:,0:len(Y.columns)], columns=Y.columns.tolist(), index=dates)
+        
+        return [mean,low,up]
+    
+    def predict_plot(self, Factor, Y, step, freq='M', alpha=0.05, figure_size=[18,12],line_width=3.0,font_size='xx-large', actural='None'):
+        mean, low, up = self.predict(Factor, Y, step, freq, alpha)
+        n_var = len(mean.columns)
+        n_act = len(Y.index)
+        
+        plt.rcParams['figure.figsize'] = (figure_size[0], figure_size[1])
+        plt.rcParams['lines.markersize'] = 6
+        plt.rcParams['image.cmap'] = 'gray'
+        
+        for i in range(n_var):
+            plt.figure()
+            plt.plot(mean.index[n_act-1:],mean.iloc[n_act-1:,i],color='r',label='forecast', linewidth=line_width)
+            plt.plot(mean.index[:n_act],mean.iloc[:n_act,i],color='k',label='observed',linewidth=line_width)
+            plt.plot(mean.index[n_act-1:],low.iloc[n_act-1:,i],color='r', linestyle = '--', label='lower - '+str(int(100-alpha*100))+'%',linewidth=line_width)
+            plt.plot(mean.index[n_act-1:],up.iloc[n_act-1:,i],color='r', linestyle = ':', label='upper - '+str(int(100-alpha*100))+'%',linewidth=line_width)
+            plt.legend()
+            if isinstance(actural,str)!=True:
+                plt.plot(mean.index[n_act-1:],actural.iloc[:,i],color='k',label='observed', linewidth=line_width)
+            plt.title(mean.columns[i], fontweight='bold', fontsize=font_size)
+            #plt.xlabel('Date')
+            #plt.ylabel('Value')
+            plt.show()
+        
+        return
+
+```
+
+```{python,  message = FALSE, warning = FALSE}
+#from FactorAugmentedVAR import *
+#from Functions import *
+from datetime import *
+import warnings
+import pandas as pd
+warnings.filterwarnings('ignore')
+
+# Data Import
+file_name ='favardata.xlsx'
+sheet_name ='Sheet1'
+Temp = pd.read_excel(file_name, sheet_name)
+vintage_transformed = Temp.iloc[:,1:]
+vintage_transformed.index = Temp.iloc[:,0]
+
+#Data Interpolation
+vintage_intrpl = DataInterpolation(vintage_transformed[1:], 0, len(vintage_transformed.index), 'slinear').dropna(axis=0,how='any')
+
+# Factor Calculation
+factor = Factor(Y=pd.DataFrame(vintage_intrpl.iloc[:,0]), 
+                X_slow=vintage_intrpl.iloc[:,1:54], 
+                n_factors=3, 
+                X_fast=vintage_intrpl.iloc[:,54:])
+
+factor.C.plot()
+#factor.F.plot()
+
+favar = FAVAR(Factor=factor.F, Y=pd.DataFrame(vintage_intrpl.iloc[:,0]), lag=12)
+#favar.VAR.summary()
+
+mean, low, up = favar.predict(Factor=factor.F[-12:], Y=pd.DataFrame(vintage_intrpl.iloc[-12:,0]), step=24)
+
+favar.predict_plot(Factor=factor.F[-12:], Y=pd.DataFrame(vintage_intrpl.iloc[-50:,0]), step=24, freq='M', alpha=0.8, figure_size=[10,6],line_width=3.0,font_size='xx-large', actural='None')
+
+forecast_results = pd.concat(
+    [mean, low.add_suffix('_lower'), up.add_suffix('_upper')], 
+    axis=1
+)
+
+print(forecast_results)
+```

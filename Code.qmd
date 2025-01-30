@@ -1,0 +1,37 @@
+---
+title: "Code"
+listing:
+  - id: LP
+    contents: "Local Projections.qmd"
+    sort: "date desc"
+  - id: LP24
+    contents: "Jorda 2024 replication.qmd"
+    sort: "date desc"
+  - id: NLLP-IV
+    contents: "NLLP-IV.qmd"
+    sort: "date desc"
+  - id: FAVAR
+    contents: "FAVAR.qmd"
+    sort: "date desc"
+
+page-layout: full
+toc: true
+toc-location: left
+---
+
+## Local Projections
+
+:::{#LP}
+:::
+
+:::{#LP24}
+:::
+
+
+:::{#NLLP-IV}
+:::
+
+## Time Series: Python
+:::{#FAVAR}
+:::
+

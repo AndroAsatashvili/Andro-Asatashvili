@@ -1,0 +1,232 @@
+---
+title: "Non Linear Local Projections"
+description: "This script details the main graphs and function used in my undergraduate dissertation"
+toc: true
+code-annotations: hover
+page-layout: full
+---
+
+# Non Linear Local Projections with Insrumental Variable Identification
+
+
+This dissertation researches the dynamics of US inflation using a novel nonlinear local projections framework. We highlight the roles of the global supply chain and consumer debt levels in monetary policy efficacy. In order to do this, we establish four regimes, constructed on transition probabilities based on the interaction of the aforementioned variables, which are known as trigger variables. This means that we asses monetary policy effectiveness on whether there's stress in the global supply chain and simultaneously, high consumer debt levels. Hence, whilst focusing on implementing two trigger variables instead of the literature's use of one, we find that monetary policy is limited under high supply chain stress, irrespective of consumer debt levels. Conversely, in low-stress environments, monetary policy consistently proves more successful when consumer debt is high. Utilising the Global Supply Chain Pressure Index and Total Consumer Credit as proxies for our trigger variables, the results call attention to the interplay between supply-side exogenous constraints and demand-side transmission mechanisms in shaping inflation dynamics in the US.
+
+## Packages and FRED API:
+
+We obtain the data from FRED's API
+
+```{r, warning=FALSE, message=FALSE}
+rm(list = ls())
+
+library(tidyverse)
+library(fredr)
+library(readxl)
+
+key <- "c27bf13d09598a184acdcb2ba94aa28f" # <1>
+fredr_set_key(key)                        # <1>
+fredr_has_key()                           # <1>
+
+```
+
+1.  Personalized key. You can create your own in https://fred.stlouisfed.org/. `fredr_has_key` checks whether API key exists.
+
+## Data:
+
+Series_id available on FRED.
+
+```{r, warning=FALSE, message=FALSE}
+
+# Industrial Production 
+INDPROD <- fredr_series_observations(series_id = "INDPRO",
+                                     observation_start = as.Date("1997-08-01"),
+                                     observation_end = as.Date("2024-03-31"),
+                                     frequency = "m",
+                                     aggregation_method = "avg",
+                                     units = "lin") %>%
+  rename(INDPROD = value) %>%
+  mutate(ldINDPROD = log(INDPROD),
+         ldINDPROD = 100 * (ldINDPROD - lag(ldINDPROD))) %>%
+  select(date, ldINDPROD)
+
+# Consumer Prices
+cpi <- fredr_series_observations(series_id = "CPIAUCSL",
+                                 observation_start = as.Date("1997-08-01"),
+                                 observation_end = as.Date("2024-03-31"),
+                                 frequency = "m",
+                                 aggregation_method = "sum",
+                                 units = "lin") %>%
+  rename(cpi = value) %>%
+  mutate(lcpi = log(cpi),
+         ldcpi = 100 * (lcpi - lag(lcpi))) %>%
+  select(date, lcpi, ldcpi)
+
+# Producer Prices
+ppi <- fredr_series_observations(series_id = "PPIIDC",
+                                 observation_start = as.Date("1997-08-01"),
+                                 observation_end = as.Date("2024-03-31"),
+                                 frequency = "m",
+                                 aggregation_method = "avg",
+                                 units = "lin") %>%
+  rename(ppi = value) %>%
+  mutate(lppi = log(ppi),
+         ldppi = 100 * (lppi - lag(lppi))) %>%
+  select(date, ldppi)
+
+# 1-Year Inflation Expectations
+EXPINF1YR <- fredr_series_observations(series_id = "EXPINF1YR",
+                                       observation_start = as.Date("1997-08-01"),
+                                       observation_end = as.Date("2024-03-31"),
+                                       frequency = "m",
+                                       aggregation_method = "avg",
+                                       units = "lin") %>%
+  rename(dEXPINF1YR = value) %>%
+  select(date, dEXPINF1YR)
+
+# 10-Year Treasury Rate 
+DGS10 <- fredr_series_observations(series_id = "DGS10",
+                                   observation_start = as.Date("1997-08-01"),
+                                   observation_end = as.Date("2024-03-31"),
+                                   frequency = "m",
+                                   aggregation_method = "avg",
+                                   units = "lin") %>%
+  rename(dDGS10 = value) %>%
+  select(date, dDGS10)
+
+# 1-Year Treasury Rate 
+DGS1 <- fredr_series_observations(series_id = "DGS1",
+                                  observation_start = as.Date("1997-08-01"),
+                                  observation_end = as.Date("2024-03-31"),
+                                  frequency = "m",
+                                  aggregation_method = "avg",
+                                  units = "lin") %>%
+  rename(dDGS1 = value) %>%
+  select(date, dDGS1)
+
+# 5-Year Treasury Rate 
+DGS5 <- fredr_series_observations(series_id = "DGS5",
+                                  observation_start = as.Date("1997-08-01"),
+                                  observation_end = as.Date("2024-03-31"),
+                                  frequency = "m",
+                                  aggregation_method = "avg",
+                                  units = "lin") %>%
+  rename(dDGS5 = value) %>%
+  select(date, dDGS5)
+
+# 30-Year Treasury Rate 
+DGS30 <- fredr_series_observations(series_id = "DGS30",
+                                   observation_start = as.Date("1997-08-01"),
+                                   observation_end = as.Date("2024-03-31"),
+                                   frequency = "m",
+                                   aggregation_method = "avg",
+                                   units = "lin") %>%
+  rename(dDGS30 = value) %>%
+  select(date, dDGS30)
+
+# BAA10Y 
+BAA10Y <- fredr_series_observations(series_id = "BAA10Y",
+                                    observation_start = as.Date("1997-08-01"),
+                                    observation_end = as.Date("2024-03-31"),
+                                    frequency = "m",
+                                    aggregation_method = "avg",
+                                    units = "lin") %>%
+  rename(dBAA10Y = value) %>%
+  select(date, dBAA10Y)
+
+# Economic Activity Index 
+econacti <- fredr_series_observations(series_id = "USPHCI",
+                                      observation_start = as.Date("1997-08-01"),
+                                      observation_end = as.Date("2024-03-31"),
+                                      frequency = "m",
+                                      aggregation_method = "avg",
+                                      units = "lin") %>%
+  rename(econacti = value) %>%
+  mutate(leconacti = log(econacti),
+         ldeconacti = 100 * (leconacti - lag(leconacti))) %>%
+  select(date, ldeconacti)
+
+# Volatility Index 
+VIX <- fredr_series_observations(series_id = "VIXCLS",
+                                 observation_start = as.Date("1997-08-01"),
+                                 observation_end = as.Date("2024-03-31"),
+                                 frequency = "m",
+                                 aggregation_method = "avg",
+                                 units = "lin") %>%
+  rename(VIX = value) %>%
+  mutate(lvix = log(VIX),
+         ldvix = 100 * (lvix - lag(lvix))) %>%
+  select(date, ldvix)
+
+
+df <- cpi %>%                                                        # <1>
+  left_join(INDPROD, by = "date") %>%
+  left_join(ppi, by = "date") %>%
+  left_join(EXPINF1YR, by = "date") %>%
+  mutate(dEXPINF1YR = dEXPINF1YR - lag(dEXPINF1YR)) %>%
+  left_join(DGS10, by = "date") %>%
+  mutate(dDGS10 = dDGS10 - lag(dDGS10)) %>%
+  left_join(DGS1, by = "date") %>%
+  mutate(dDGS1 = dDGS1 - lag(dDGS1)) %>%
+  left_join(DGS5, by = "date") %>%
+  mutate(dDGS5 = dDGS5 - lag(dDGS5)) %>%
+  left_join(DGS30, by = "date") %>%
+  mutate(dDGS30 = dDGS30 - lag(dDGS30)) %>%
+  left_join(BAA10Y, by = "date") %>%
+  mutate(dBAA10Y = dBAA10Y - lag(dBAA10Y)) %>%
+  left_join(econacti, by = "date") %>%
+  left_join(VIX, by = "date") %>%
+  mutate(ldvix = ldvix - lag(ldvix))
+                                                                    # <1>
+df <- df[-1, ]
+head(df)
+```
+
+1.  We join the variables and create some that will be useful as well
+
+## Regime variables
+
+Where $z_{t}$ is any given trigger variable. The logistic probability function enables us to avoid using a dummy approach, which allows the use of all observations. Although in some cases its suitable to think of a binary trigger variable, the data is separated into two independent regimes, lowering the degrees of freedom and data coverage. As well, a nice feature is that the transformed trigger variable would now have $Var(z_{t}) = 1$ and $E(z_{t}) = 0$. The logistic probability density function has curvature parameter $\kappa > 0$, which captures the regime-switching behaviour of the trigger variable. As a baseline, we use $\kappa = 6$ for both trigger variables. Moreover, $F(\cdot)$ can have the lag of the trigger variable ($z_{t-1}$) as its input. This is done to avoid feedback. Lastly, we use the Hodrick-Prescott (HP) filter, as recommended by \citet{auerbach2012measuring}, to remove the cyclical component of the trigger variable. For the decomposition parameter $\lambda$ of the HP filter, we use $\lambda = 129,600$ for monthly data. This allows us to obtain a smoothed-curve representation of the trigger, which becomes more sensible to long-term fluctuations. Thus, we capture the dynamics with our respective triggers with non-linear local projections (NLLP).
+
+```{=tex}
+\begin{equation} 
+    F(z_{t-1}) = \frac{\exp^{-\kappa z_{t-1}}}{1 + \exp^{-\kappa z_{t-1}}}
+\end{equation}
+```
+
+
+```{r}
+trigger_z <- function(z, specs) {
+  
+  specs <- list()
+  specs$lambda_z        <- lambda_z
+  specs$gamma_z         <- gamma_z
+  specs$use_hp_z        <- use_hp_z
+  specs$lag_switching_z <- lag_switching_z
+  z                     <- as.data.frame(z)
+  names(z)              <- "z_var"
+  
+  if (specs$use_hp_z == TRUE) {
+    
+    filter_results_z <- lpirfs::hp_filter(as.matrix(z), specs$lambda_z)
+    gamma_z          <- specs$gamma_z
+    z_0_z            <- as.numeric(scale(filter_results_z[[1]], center = TRUE))
+    fz_z             <- 1 - exp(-gamma_z * z_0_z) / (1 + exp(-gamma_z * z_0_z))
+    
+    if (isTRUE(specs$lag_switching_z)) {
+      fz_z <- 1 - exp(-gamma_z * dplyr::lag(z_0_z, 1)) / 
+              (1 + exp(-gamma_z * dplyr::lag(z_0_z, 1)))
+    }
+    
+  } else {
+    
+    fz_z <- 1 - exp(-specs$gamma_z * z$z_var) / (1 + exp(-specs$gamma_z * z$z_var))
+    
+    if (isTRUE(specs$lag_switching_z)) {
+      fz_z <- dplyr::lag(fz_z, 1)
+    }
+    
+  }
+  
+  return(fz_z)
+}
+
+```

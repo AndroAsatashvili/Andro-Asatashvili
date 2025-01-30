@@ -1,0 +1,4 @@
+- source: project
+  quarto-pub:
+    - id: e25b8385-074f-427e-9a98-060a43626880
+      url: 'https://asatashvili.quarto.pub/a'
